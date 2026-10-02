@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  likes     Like[]
+  playlists Playlist[]
+  history   HistoryItem[]
+}
+
+// ============================================================
+// LIKED SONGS
+// ============================================================
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  trackId   String
+  title     String
+  artist    String
+  artwork   String?
+  duration  Int      @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, trackId])
+}
+
+// ============================================================
+// PLAYLISTS
+// ============================================================
+
+model Playlist {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+
+  createdAt   DateTime @default(now())
+  tracks      PlaylistTrack[]
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  trackId    String
+  title      String
+  artist     String
+  artwork    String?
+  duration   Int      @default(0)
+  position   Int      @default(0)
+
+  addedAt    DateTime @default(now())
+}
+
+// ============================================================
+// RECENTLY PLAYED
+// ============================================================
+
+model HistoryItem {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  trackId  String
+  title    String
+  artist   String
+  artwork  String?
+  duration Int      @default(0)
+
+  playedAt DateTime @default(now())
+}
