@@ -112,6 +112,7 @@ function formatTrack(track) {
         id,
         title: track?.title || "Unknown Track",
         artist: getArtist(track),
+        artistId: track?.user?.id || null,
         artistHandle: track?.user?.handle || "",
         duration: Number(track?.duration || 0),
         artwork: getArtwork(track),
@@ -137,6 +138,39 @@ function formatTracks(data) {
 
 }
 
+
+// ============================================================
+// ARTIST (USER) HELPERS
+// ============================================================
+
+function getArtistAvatar(user) {
+
+    const photo = user?.profile_picture || user?.cover_photo || {};
+
+    return (
+        photo["1000x1000"] ||
+        photo["480x480"] ||
+        photo["150x150"] ||
+        null
+    );
+
+}
+
+function formatArtist(user) {
+
+    return {
+        id: user?.id || null,
+        name: user?.name || "Unknown Artist",
+        handle: user?.handle || "",
+        bio: user?.bio || "",
+        avatar: getArtistAvatar(user),
+        isVerified: Boolean(user?.is_verified),
+        followerCount: Number(user?.follower_count || 0),
+        trackCount: Number(user?.track_count || 0)
+    };
+
+}
+
 module.exports = {
     AUDIUS_API_URL,
     AUDIUS_BEARER_TOKEN,
@@ -146,5 +180,6 @@ module.exports = {
     getArtist,
     getArtwork,
     formatTrack,
-    formatTracks
+    formatTracks,
+    formatArtist
 };

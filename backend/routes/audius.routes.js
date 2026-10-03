@@ -7,7 +7,8 @@ const {
     buildAudiusUrl,
     audiusRequest,
     formatTrack,
-    formatTracks
+    formatTracks,
+    formatArtist
 } = require("../services/audiusService");
 
 const router = express.Router();
@@ -188,6 +189,62 @@ router.get("/tracks/:id", async (req, res) => {
         console.error("Track error:", error.message);
 
         res.status(502).json({ success: false, error: "Unable to fetch this track." });
+
+    }
+
+});
+
+
+// ============================================================
+// GET ONE ARTIST
+// ============================================================
+
+router.get("/artists/:id", async (req, res) => {
+
+    try {
+
+        const artistId = encodeURIComponent(req.params.id);
+
+        const result = await audiusRequest(`/users/${artistId}`);
+
+        if (!result?.data) {
+            return res.status(404).json({ success: false, error: "Artist not found." });
+        }
+
+        res.json({ success: true, artist: formatArtist(result.data) });
+
+    } catch (error) {
+
+        console.error("Artist error:", error.message);
+
+        res.status(502).json({ success: false, error: "Unable to fetch this artist." });
+
+    }
+
+});
+
+
+// ============================================================
+// GET AN ARTIST'S TRACKS
+// ============================================================
+
+router.get("/artists/:id/tracks", async (req, res) => {
+
+    try {
+
+        const artistId = encodeURIComponent(req.params.id);
+        const limit = Math.min(Math.max(Number(req.query.limit) || 24, 1), 50);
+        const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+        const result = await audiusRequest(`/users/${artistId}/tracks`, { limit, offset });
+
+        res.json({ success: true, tracks: formatTracks(result?.data) });
+
+    } catch (error) {
+
+        console.error("Artist tracks error:", error.message);
+
+        res.status(502).json({ success: false, error: "Unable to fetch this artist's tracks." });
 
     }
 

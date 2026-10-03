@@ -377,7 +377,11 @@ function createTrackCard(
                     ${escapeHTML(track.title)}
                 </div>
 
-                <div class="track-artist">
+                <div
+                    class="track-artist"
+                    data-action="artist"
+                    data-artist-id="${escapeHTML(track.artistId || "")}"
+                >
                     ${escapeHTML(track.artist)}
                 </div>
 
@@ -512,6 +516,17 @@ function attachGridEvents(
 
                 if (window.AuroraPlaylists) {
                     window.AuroraPlaylists.openPicker(track);
+                }
+
+                return;
+            }
+
+            if (action === "artist") {
+
+                const artistId = actionElement?.dataset.artistId;
+
+                if (artistId) {
+                    openArtist(artistId);
                 }
 
                 return;
@@ -1565,6 +1580,21 @@ if (playerLikeButton) {
 }
 
 
+if (playerArtist) {
+
+    playerArtist.addEventListener("click", () => {
+
+        if (currentTrack && currentTrack.artistId) {
+            openArtist(currentTrack.artistId);
+        }
+
+    });
+
+}
+
+
+
+
 // ============================================================
 // RECENTLY PLAYED
 // ============================================================
@@ -1885,6 +1915,91 @@ function goToQueue() {
 function goToProfile() {
     showSection("profileSection");
     loadProfile();
+}
+
+function openArtist(artistId) {
+    showSection("artistSection");
+    loadArtist(artistId);
+}
+
+async function loadArtist(artistId) {
+
+    const artistContent = document.getElementById("artistContent");
+
+    if (!artistContent) {
+        return;
+    }
+
+    artistContent.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
+            <h3>Loading artist…</h3>
+        </div>
+    `;
+
+    try {
+
+        const [artistData, tracksData] = await Promise.all([
+            apiRequest(`/artists/${encodeURIComponent(artistId)}`),
+            apiRequest(`/artists/${encodeURIComponent(artistId)}/tracks?limit=24`)
+        ]);
+
+        const artist = artistData.artist;
+        const tracks = Array.isArray(tracksData.tracks) ? tracksData.tracks : [];
+
+        const avatarHtml =
+            artist.avatar
+                ? `<img class="artist-avatar" src="${escapeHTML(artist.avatar)}" alt="${escapeHTML(artist.name)}" onerror="this.onerror=null;this.src='${PLACEHOLDER_ARTWORK}';">`
+                : `<div class="artist-avatar-placeholder">${escapeHTML((artist.name || "?").charAt(0).toUpperCase())}</div>`;
+
+        artistContent.innerHTML = `
+
+            <div class="artist-header">
+
+                ${avatarHtml}
+
+                <div>
+                    <h1>
+                        ${escapeHTML(artist.name)}
+                        ${artist.isVerified ? '<i class="fa-solid fa-circle-check" title="Verified artist"></i>' : ""}
+                    </h1>
+
+                    <div class="artist-meta-row">
+                        @${escapeHTML(artist.handle)} ·
+                        ${artist.followerCount.toLocaleString()} followers ·
+                        ${artist.trackCount.toLocaleString()} tracks
+                    </div>
+
+                    ${artist.bio ? `<p class="artist-bio">${escapeHTML(artist.bio)}</p>` : ""}
+                </div>
+
+            </div>
+
+            <h2 class="artist-tracks-heading">Tracks</h2>
+
+            <div class="track-grid" id="artistTrackGrid"></div>
+
+        `;
+
+        const artistTrackGrid = document.getElementById("artistTrackGrid");
+
+        renderGrid(artistTrackGrid, tracks, "artist");
+        attachGridEvents(artistTrackGrid, tracks);
+
+    } catch (error) {
+
+        console.error("Load artist error:", error);
+
+        artistContent.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h3>Couldn't load this artist</h3>
+                <p>${escapeHTML(error.message || "Please try again.")}</p>
+            </div>
+        `;
+
+    }
+
 }
 
 async function loadProfile() {
