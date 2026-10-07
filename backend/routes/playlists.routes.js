@@ -205,4 +205,62 @@ router.delete("/:playlistId/tracks/:rowId", requireAuth, async (req, res) => {
 
 });
 
+// ============================================================
+// EDIT A PLAYLIST (rename / change description)
+// ============================================================
+
+router.patch("/:playlistId", requireAuth, async (req, res) => {
+
+    try {
+
+        const { playlistId } = req.params;
+        const { name, description } = req.body || {};
+
+        const playlist = await prisma.playlist.findFirst({
+            where: { id: playlistId, userId: req.userId }
+        });
+
+        if (!playlist) {
+            return res.status(404).json({ success: false, error: "Playlist not found." });
+        }
+
+        const data = {};
+
+        if (name !== undefined) {
+
+            const cleanName = String(name).trim().slice(0, 60);
+
+            if (!cleanName) {
+                return res.status(400).json({ success: false, error: "Playlist name is required." });
+            }
+
+            data.name = cleanName;
+
+        }
+
+        if (description !== undefined) {
+
+            const cleanDescription = String(description || "").trim().slice(0, 160);
+
+            data.description = cleanDescription || null;
+
+        }
+
+        const updated = await prisma.playlist.update({
+            where: { id: playlistId },
+            data,
+            include: { tracks: { orderBy: { position: "asc" } } }
+        });
+
+        res.json({ success: true, playlist: formatPlaylist(updated) });
+
+    } catch (error) {
+
+        console.error("Edit playlist error:", error.message);
+        res.status(500).json({ success: false, error: "Unable to update playlist." });
+
+    }
+
+});
+
 module.exports = router;

@@ -2096,6 +2096,7 @@ function renderPlaylistDetail(playlist) {
             <div>
                 <p class="section-kicker">PLAYLIST</p>
                 <h1>${escapeHTML(playlist.name)}</h1>
+                ${playlist.description ? `<p class="playlist-detail-desc">${escapeHTML(playlist.description)}</p>` : ""}
                 <div class="artist-meta-row">
                     ${tracks.length} track${tracks.length === 1 ? "" : "s"}
                 </div>
@@ -2106,6 +2107,9 @@ function renderPlaylistDetail(playlist) {
                     </button>
                     <button class="text-button" id="playlistShuffleButton">
                         <i class="fa-solid fa-shuffle"></i> Shuffle
+                    </button>
+                    <button class="text-button" id="playlistRenameButton">
+                        <i class="fa-solid fa-pen"></i> Edit
                     </button>
                     <button class="text-button" id="playlistDeleteButton">
                         <i class="fa-solid fa-trash"></i> Delete
@@ -2162,9 +2166,25 @@ function renderPlaylistDetail(playlist) {
 
     });
 
+    document.getElementById("playlistRenameButton")?.addEventListener("click", () => {
+
+        window.AuroraPlaylists.openEditModal(playlist, () => {
+            if (typeof showToast === "function") showToast("Playlist updated");
+            loadPlaylistDetail(playlist.id);
+        });
+
+    });
+
     document.getElementById("playlistDeleteButton")?.addEventListener("click", async () => {
 
-        if (!confirm(`Delete "${playlist.name}"? This can't be undone.`)) return;
+        const confirmed = await window.AuroraPlaylists.confirmDialog({
+            title: "Delete playlist?",
+            message: `"${playlist.name}" will be permanently deleted. This can't be undone.`,
+            confirmText: "Delete",
+            danger: true
+        });
+
+        if (!confirmed) return;
 
         try {
 

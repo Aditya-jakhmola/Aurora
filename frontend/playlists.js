@@ -1,11 +1,12 @@
 // ============================================================
 // AURORA — PLAYLISTS
+// Create / edit modal, add-to-playlist sheet, confirm dialog,
+// and the Library > Playlists panel.
 // ============================================================
 
 (function () {
 
     let myPlaylists = [];
-    let pickerTrack = null;    // the track currently being added via the picker
 
     // Same placeholder used in script.js — duplicated here so this file
     // doesn't depend on script.js having loaded first.
@@ -27,20 +28,17 @@
         if (typeof showToast === "function") {
             showToast(message);
         } else {
-            alert(message);
+            console.log("Aurora:", message);
         }
     }
 
-    // Failures use a real alert() — a toast is easy to miss, and if
-    // something goes wrong here we want it impossible not to notice.
-    function notifyError(message) {
-        console.error("Aurora playlists error:", message);
-        alert(message || "Something went wrong with that playlist action.");
+    function isLoggedIn() {
+        return Boolean(window.AuroraAuth && window.AuroraAuth.isLoggedIn());
     }
 
     function requireLogin() {
 
-        if (window.AuroraAuth && window.AuroraAuth.isLoggedIn()) {
+        if (isLoggedIn()) {
             return true;
         }
 
@@ -55,14 +53,19 @@
         return playlist.tracks.find(t => t.artwork)?.artwork || PLACEHOLDER_ARTWORK;
     }
 
+    function trackCountLabel(playlist) {
+        const n = playlist.tracks.length;
+        return `${n} track${n === 1 ? "" : "s"}`;
+    }
+
 
     // ------------------------------------------------------------
-    // LOAD PLAYLISTS FROM THE BACKEND
+    // API
     // ------------------------------------------------------------
 
     async function loadPlaylists() {
 
-        if (!(window.AuroraAuth && window.AuroraAuth.isLoggedIn())) {
+        if (!isLoggedIn()) {
             myPlaylists = [];
             return myPlaylists;
         }
@@ -83,30 +86,31 @@
 
     }
 
-
-    // ------------------------------------------------------------
-    // CREATE A NEW PLAYLIST
-    // ------------------------------------------------------------
-
-    async function createPlaylist(name) {
+    async function createPlaylist(name, description) {
 
         const data = await window.AuroraAuth.apiRequest("/playlists", {
             method: "POST",
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, description })
         });
 
         return data.playlist;
 
     }
 
+    async function updatePlaylist(playlistId, name, description) {
 
-    // ------------------------------------------------------------
-    // ADD A TRACK TO A PLAYLIST BY ID
-    // ------------------------------------------------------------
+        const data = await window.AuroraAuth.apiRequest(`/playlists/${playlistId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ name, description })
+        });
+
+        return data.playlist;
+
+    }
 
     async function addTrackToPlaylist(playlistId, track) {
 
-        const data = await window.AuroraAuth.apiRequest(
+        return window.AuroraAuth.apiRequest(
             `/playlists/${playlistId}/tracks`,
             {
                 method: "POST",
@@ -120,13 +124,410 @@
             }
         );
 
-        return data;
+    }
+
+
+    // ------------------------------------------------------------
+    // GENERIC MODAL (fresh overlay each time, removed on close)
+    // ------------------------------------------------------------
+
+    function openModal(extraClass, innerHtml, onClose) {
+
+        const overlay = document.createElement("div");
+        overlay.className = "modal-overlay";
+
+        overlay.innerHTML = `
+            <div class="modal-box pl-modal ${extraClass || ""}" role="dialog" aria-modal="true">
+                <button class="modal-close" data-modal-close type="button" title="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                ${innerHtml}
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => overlay.classList.add("show"));
+
+        let closed = false;
+
+        function close() {
+
+            if (closed) return;
+            closed = true;
+
+            overlay.classList.remove("show");
+            document.removeEventListener("keydown", onKeydown);
+
+            setTimeout(() => overlay.remove(), 220);
+
+            if (typeof onClose === "function") onClose();
+
+        }
+
+        function onKeydown(event) {
+            if (event.key === "Escape") close();
+        }
+
+        document.addEventListener("keydown", onKeydown);
+
+        overlay.addEventListener("click", event => {
+
+            if (event.target === overlay || event.target.closest("[data-modal-close]")) {
+                close();
+            }
+
+        });
+
+        return { overlay, close };
 
     }
 
 
     // ------------------------------------------------------------
-    // RENDER THE PLAYLISTS PANEL (Library > Playlists tab)
+    // CREATE / EDIT PLAYLIST MODAL
+    // ------------------------------------------------------------
+
+    function openPlaylistFormModal({ mode, playlist, onSaved }) {
+
+        if (!requireLogin()) return;
+
+        const isEdit = mode === "edit";
+
+        const { overlay, close } = openModal("", `
+
+            <div class="pl-modal-head">
+                <div class="pl-modal-icon">
+                    <i class="fa-solid ${isEdit ? "fa-pen" : "fa-layer-group"}"></i>
+                </div>
+                <div>
+                    <h3 class="pl-modal-title">${isEdit ? "Edit playlist" : "Create playlist"}</h3>
+                    <p class="pl-modal-sub">
+                        ${isEdit
+                            ? "Update the name or description."
+                            : "Give your playlist a name and make it yours."}
+                    </p>
+                </div>
+            </div>
+
+            <form class="pl-form" id="plForm" novalidate>
+
+                <label for="plName">Name</label>
+                <input
+                    id="plName"
+                    type="text"
+                    maxlength="60"
+                    placeholder="e.g. Late night drive"
+                    autocomplete="off"
+                >
+
+                <label for="plDesc">
+                    Description <span class="pl-optional">(optional)</span>
+                </label>
+                <textarea
+                    id="plDesc"
+                    rows="3"
+                    maxlength="160"
+                    placeholder="What's this playlist about?"
+                ></textarea>
+
+                <div class="pl-char-count"><span id="plDescCount">0</span>/160</div>
+
+                <div class="pl-form-error" id="plFormError" hidden></div>
+
+                <div class="pl-modal-actions">
+                    <button type="button" class="pl-btn pl-btn-ghost" data-modal-close>Cancel</button>
+                    <button type="submit" class="pl-btn pl-btn-primary" id="plSubmit">
+                        ${isEdit ? "Save changes" : "Create playlist"}
+                    </button>
+                </div>
+
+            </form>
+
+        `);
+
+        const form = overlay.querySelector("#plForm");
+        const nameInput = overlay.querySelector("#plName");
+        const descInput = overlay.querySelector("#plDesc");
+        const countEl = overlay.querySelector("#plDescCount");
+        const errorEl = overlay.querySelector("#plFormError");
+        const submitBtn = overlay.querySelector("#plSubmit");
+
+        nameInput.value = playlist?.name || "";
+        descInput.value = playlist?.description || "";
+        countEl.textContent = descInput.value.length;
+
+        descInput.addEventListener("input", () => {
+            countEl.textContent = descInput.value.length;
+        });
+
+        setTimeout(() => {
+            nameInput.focus();
+            nameInput.select();
+        }, 60);
+
+        function showError(message) {
+            errorEl.textContent = message;
+            errorEl.hidden = false;
+        }
+
+        form.addEventListener("submit", async event => {
+
+            event.preventDefault();
+            errorEl.hidden = true;
+
+            const name = nameInput.value.trim();
+            const description = descInput.value.trim();
+
+            if (!name) {
+                showError("Please give your playlist a name.");
+                nameInput.focus();
+                return;
+            }
+
+            const originalLabel = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = isEdit ? "Saving…" : "Creating…";
+
+            try {
+
+                const result = isEdit
+                    ? await updatePlaylist(playlist.id, name, description)
+                    : await createPlaylist(name, description);
+
+                close();
+
+                if (typeof onSaved === "function") onSaved(result);
+
+            } catch (error) {
+
+                showError(error.message || "Something went wrong. Please try again.");
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+
+            }
+
+        });
+
+    }
+
+
+    // ------------------------------------------------------------
+    // CONFIRM DIALOG (replaces the ugly browser confirm())
+    // ------------------------------------------------------------
+
+    function confirmDialog({ title, message, confirmText, danger }) {
+
+        return new Promise(resolve => {
+
+            let answered = false;
+
+            const { overlay, close } = openModal("pl-confirm", `
+
+                <div class="pl-confirm-icon ${danger ? "is-danger" : ""}">
+                    <i class="fa-solid ${danger ? "fa-trash" : "fa-circle-question"}"></i>
+                </div>
+
+                <h3 class="pl-modal-title pl-center">${escapeHTML(title || "Are you sure?")}</h3>
+                <p class="pl-modal-sub pl-center">${escapeHTML(message || "")}</p>
+
+                <div class="pl-modal-actions">
+                    <button type="button" class="pl-btn pl-btn-ghost" data-modal-close>Cancel</button>
+                    <button type="button" class="pl-btn ${danger ? "pl-btn-danger" : "pl-btn-primary"}" id="plConfirmYes">
+                        ${escapeHTML(confirmText || "Confirm")}
+                    </button>
+                </div>
+
+            `, () => {
+                if (!answered) resolve(false);
+            });
+
+            overlay.querySelector("#plConfirmYes").addEventListener("click", () => {
+                answered = true;
+                resolve(true);
+                close();
+            });
+
+        });
+
+    }
+
+
+    // ------------------------------------------------------------
+    // ADD-TO-PLAYLIST SHEET
+    // ------------------------------------------------------------
+
+    async function openPicker(track) {
+
+        if (!requireLogin()) return;
+
+        if (!track || !track.id) {
+            notify("This track can't be added right now — try refreshing the page.");
+            return;
+        }
+
+        const { overlay, close } = openModal("pl-picker", `
+
+            <h3 class="pl-modal-title">Add to playlist</h3>
+
+            <div class="pl-track-preview">
+                <img
+                    src="${escapeHTML(track.artwork || PLACEHOLDER_ARTWORK)}"
+                    alt=""
+                    onerror="this.onerror=null;this.src='${PLACEHOLDER_ARTWORK}';"
+                >
+                <div>
+                    <strong>${escapeHTML(track.title)}</strong>
+                    <span>${escapeHTML(track.artist)}</span>
+                </div>
+            </div>
+
+            <button type="button" class="pl-row pl-row-new" id="plNewRow">
+                <span class="pl-row-icon"><i class="fa-solid fa-plus"></i></span>
+                <span class="pl-row-text">
+                    <strong>New playlist</strong>
+                    <span>Create one and add this song</span>
+                </span>
+            </button>
+
+            <div class="pl-row-list" id="plRowList">
+                <div class="pl-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Loading your playlists…
+                </div>
+            </div>
+
+            <div class="pl-modal-actions">
+                <button type="button" class="pl-btn pl-btn-primary" data-modal-close>Done</button>
+            </div>
+
+        `, () => {
+            renderPanel();
+        });
+
+        const list = overlay.querySelector("#plRowList");
+
+        function isInPlaylist(playlist) {
+            return playlist.tracks.some(t => String(t.id) === String(track.id));
+        }
+
+        function renderRows() {
+
+            if (!myPlaylists.length) {
+
+                list.innerHTML = `
+                    <p class="pl-empty">
+                        You don't have any playlists yet — create your first one above.
+                    </p>
+                `;
+
+                return;
+
+            }
+
+            list.innerHTML = myPlaylists.map(playlist => {
+
+                const added = isInPlaylist(playlist);
+
+                return `
+                    <button type="button" class="pl-row ${added ? "is-added" : ""}" data-pid="${playlist.id}">
+                        <img
+                            class="pl-row-cover"
+                            src="${escapeHTML(coverArtworkFor(playlist))}"
+                            alt=""
+                            onerror="this.onerror=null;this.src='${PLACEHOLDER_ARTWORK}';"
+                        >
+                        <span class="pl-row-text">
+                            <strong>${escapeHTML(playlist.name)}</strong>
+                            <span>${trackCountLabel(playlist)}</span>
+                        </span>
+                        <span class="pl-row-state">
+                            ${added
+                                ? '<i class="fa-solid fa-circle-check"></i> Added'
+                                : '<i class="fa-solid fa-plus"></i>'}
+                        </span>
+                    </button>
+                `;
+
+            }).join("");
+
+        }
+
+        await loadPlaylists();
+        renderRows();
+
+        list.addEventListener("click", async event => {
+
+            const row = event.target.closest("[data-pid]");
+            if (!row || row.classList.contains("is-busy")) return;
+
+            const playlist = myPlaylists.find(p => p.id === row.dataset.pid);
+            if (!playlist) return;
+
+            if (isInPlaylist(playlist)) {
+                notify(`Already in "${playlist.name}"`);
+                return;
+            }
+
+            row.classList.add("is-busy");
+
+            try {
+
+                await addTrackToPlaylist(playlist.id, track);
+
+                playlist.tracks = [
+                    ...playlist.tracks,
+                    {
+                        id: String(track.id),
+                        title: track.title,
+                        artist: track.artist,
+                        artwork: track.artwork
+                    }
+                ];
+
+                renderRows();
+                notify(`Added to "${playlist.name}"`);
+
+            } catch (error) {
+
+                row.classList.remove("is-busy");
+                notify(error.message || "Could not add this track.");
+
+            }
+
+        });
+
+        overlay.querySelector("#plNewRow").addEventListener("click", () => {
+
+            openPlaylistFormModal({
+
+                mode: "create",
+
+                onSaved: async newPlaylist => {
+
+                    try {
+
+                        await addTrackToPlaylist(newPlaylist.id, track);
+                        notify(`Added to "${newPlaylist.name}"`);
+
+                    } catch (error) {
+
+                        notify(`Playlist created, but the song couldn't be added: ${error.message}`);
+
+                    }
+
+                    close();
+
+                }
+
+            });
+
+        });
+
+    }
+
+
+    // ------------------------------------------------------------
+    // PLAYLISTS PANEL (Library > Playlists tab)
     // ------------------------------------------------------------
 
     async function renderPanel() {
@@ -135,7 +536,7 @@
 
         if (!container) return;
 
-        if (!(window.AuroraAuth && window.AuroraAuth.isLoggedIn())) {
+        if (!isLoggedIn()) {
 
             container.innerHTML = `
                 <div class="empty-state">
@@ -180,7 +581,7 @@
 
                     <div class="playlist-card-text">
                         <strong>${escapeHTML(playlist.name)}</strong>
-                        <span>${playlist.tracks.length} track${playlist.tracks.length === 1 ? "" : "s"}</span>
+                        <span>${trackCountLabel(playlist)}</span>
                     </div>
 
                 </div>
@@ -195,30 +596,17 @@
 
     }
 
-
-    // ------------------------------------------------------------
-    // PANEL EVENTS (create / open / delete)
-    // ------------------------------------------------------------
-
     function initPanelEvents() {
 
-        document.getElementById("createPlaylistButton")?.addEventListener("click", async () => {
+        document.getElementById("createPlaylistButton")?.addEventListener("click", () => {
 
-            if (!requireLogin()) return;
-
-            const name = prompt("Playlist name:");
-
-            if (!name || !name.trim()) return;
-
-            try {
-
-                await createPlaylist(name.trim());
-                notify("Playlist created");
-                renderPanel();
-
-            } catch (error) {
-                notifyError(error.message);
-            }
+            openPlaylistFormModal({
+                mode: "create",
+                onSaved: () => {
+                    notify("Playlist created");
+                    renderPanel();
+                }
+            });
 
         });
 
@@ -228,8 +616,7 @@
             if (!card) return;
 
             const playlistId = card.dataset.playlistId;
-            const actionElement = event.target.closest("[data-action]");
-            const action = actionElement?.dataset.action;
+            const action = event.target.closest("[data-action]")?.dataset.action;
 
             if (action === "open") {
 
@@ -243,154 +630,30 @@
 
             if (action === "delete") {
 
-                if (!confirm("Delete this playlist?")) return;
+                const playlist = myPlaylists.find(p => p.id === playlistId);
+
+                const ok = await confirmDialog({
+                    title: "Delete playlist?",
+                    message: `"${playlist?.name || "This playlist"}" will be permanently deleted. This can't be undone.`,
+                    confirmText: "Delete",
+                    danger: true
+                });
+
+                if (!ok) return;
 
                 try {
+
                     await window.AuroraAuth.apiRequest(`/playlists/${playlistId}`, { method: "DELETE" });
+                    notify("Playlist deleted");
                     renderPanel();
+
                 } catch (error) {
-                    notifyError(error.message);
+                    notify(error.message || "Could not delete this playlist.");
                 }
-
-                return;
 
             }
 
         });
-
-    }
-
-
-    // ------------------------------------------------------------
-    // "ADD TO PLAYLIST" POPUP — a real dropdown, not a text prompt
-    // ------------------------------------------------------------
-
-    let pickerOverlay = null;
-
-    function buildPickerOverlay() {
-
-        const wrapper = document.createElement("div");
-        wrapper.id = "playlistPickerOverlay";
-        wrapper.className = "modal-overlay";
-
-        wrapper.innerHTML = `
-            <div class="modal-box">
-                <button class="modal-close" id="pickerClose" title="Close">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-                <h3 class="modal-title">Add to Playlist</h3>
-
-                <div class="modal-form">
-                    <label id="pickerTrackLabel"></label>
-
-                    <select id="pickerSelect"></select>
-
-                    <button type="button" class="primary-button" id="pickerAddButton">
-                        Add
-                    </button>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(wrapper);
-
-        wrapper.querySelector("#pickerClose").addEventListener("click", () => {
-            wrapper.classList.remove("show");
-        });
-
-        wrapper.addEventListener("click", event => {
-            if (event.target === wrapper) wrapper.classList.remove("show");
-        });
-
-        return wrapper;
-
-    }
-
-    async function openPicker(track) {
-
-        if (!requireLogin()) return;
-
-        if (!track || !track.id) {
-            notifyError("This track can't be added right now — try refreshing the page.");
-            return;
-        }
-
-        pickerTrack = track;
-
-        if (!pickerOverlay) {
-            pickerOverlay = buildPickerOverlay();
-        }
-
-        const select = pickerOverlay.querySelector("#pickerSelect");
-        const label = pickerOverlay.querySelector("#pickerTrackLabel");
-        const addButton = pickerOverlay.querySelector("#pickerAddButton");
-
-        label.textContent = `Adding: ${track.title} — ${track.artist}`;
-        select.innerHTML = `<option>Loading your playlists…</option>`;
-        pickerOverlay.classList.add("show");
-
-        await loadPlaylists();
-
-        const options = myPlaylists
-            .map(p => `<option value="${p.id}">${escapeHTML(p.name)} (${p.tracks.length})</option>`)
-            .join("");
-
-        select.innerHTML = `
-            ${options}
-            <option value="__new__">+ Create new playlist…</option>
-        `;
-
-        addButton.onclick = async () => {
-
-            const chosenId = select.value;
-
-            addButton.disabled = true;
-            addButton.textContent = "Adding…";
-
-            try {
-
-                let targetPlaylist;
-
-                if (chosenId === "__new__") {
-
-                    const name = prompt("New playlist name:");
-
-                    if (!name || !name.trim()) {
-                        addButton.disabled = false;
-                        addButton.textContent = "Add";
-                        return;
-                    }
-
-                    targetPlaylist = await createPlaylist(name.trim());
-
-                } else {
-
-                    targetPlaylist = myPlaylists.find(p => p.id === chosenId);
-
-                    if (!targetPlaylist) {
-                        throw new Error("Please pick a playlist from the list.");
-                    }
-
-                }
-
-                await addTrackToPlaylist(targetPlaylist.id, pickerTrack);
-
-                notify(`Added "${pickerTrack.title}" to "${targetPlaylist.name}"`);
-                pickerOverlay.classList.remove("show");
-                renderPanel();
-
-            } catch (error) {
-
-                notifyError(error.message || "Could not add this track to the playlist.");
-
-            } finally {
-
-                addButton.disabled = false;
-                addButton.textContent = "Add";
-
-            }
-
-        };
 
     }
 
@@ -403,7 +666,10 @@
 
     window.AuroraPlaylists = {
         renderPanel,
-        openPicker
+        openPicker,
+        openCreateModal: opts => openPlaylistFormModal({ mode: "create", ...opts }),
+        openEditModal: (playlist, onSaved) => openPlaylistFormModal({ mode: "edit", playlist, onSaved }),
+        confirmDialog
     };
 
 })();
