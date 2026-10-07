@@ -1646,35 +1646,66 @@ input:focus-visible {
 }
 
 .playlist-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 14px 16px;
+
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 14px;
     background: var(--surface);
-    overflow: hidden;
+
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+
+    transition: var(--transition);
+}
+
+.playlist-card:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.15);
+    transform: translateY(-2px);
 }
 
 .playlist-card-header {
+    flex: 1;
+    min-width: 0;
+
     display: flex;
     align-items: center;
-    justify-content: space-between;
-
-    padding: 14px 16px;
+    gap: 14px;
 
     cursor: pointer;
 }
 
+.playlist-card-cover {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+
+    border-radius: 10px;
+    object-fit: cover;
+
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.playlist-card-text {
+    min-width: 0;
+}
+
 .playlist-card-header strong {
     display: block;
-    font-size: 14px;
+    font-size: 15px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .playlist-card-header span {
     font-size: 12px;
     color: var(--text-secondary);
-}
-
-.playlist-card-tracks {
-    border-top: 1px solid var(--border);
-    padding: 8px 12px;
 }
 
 .playlist-empty-hint {
@@ -2090,6 +2121,35 @@ input:focus-visible {
     font-size: 12px;
 }
 
+#profileContent {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+#profileLogoutButton {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+
+    width: 100%;
+    margin-top: 8px;
+
+    padding: 13px 24px;
+
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.08);
+
+    color: #f87171;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+#profileLogoutButton:hover {
+    background: rgba(239, 68, 68, 0.16);
+}
+
 
 /* =========================================================
    ARTIST PAGE
@@ -2178,6 +2238,166 @@ input:focus-visible {
 
     font-size: 16px;
     font-weight: 700;
+}
+
+
+/* =========================================================
+   LIBRARY TRACK ROW (playlist detail page track list)
+   ========================================================= */
+
+.library-track {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    padding: 10px 12px;
+    margin-bottom: 6px;
+
+    border-radius: 10px;
+
+    transition: var(--transition);
+}
+
+.library-track:hover {
+    background: var(--surface-hover);
+}
+
+.library-track img {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.library-track > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.library-track strong {
+    display: block;
+    font-size: 14px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.library-track span {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.library-play {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+
+    color: white;
+    font-size: 12px;
+
+    cursor: pointer;
+    opacity: 0;
+
+    transition: var(--transition);
+}
+
+.library-track:hover .library-play {
+    opacity: 1;
+}
+
+
+/* =========================================================
+   PLAYLIST DETAIL PAGE
+   ========================================================= */
+
+.playlist-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+
+    padding: 32px;
+    margin-bottom: 28px;
+
+    border-radius: var(--radius);
+
+    background: linear-gradient(
+        135deg,
+        rgba(168, 85, 247, 0.18),
+        rgba(124, 58, 237, 0.06)
+    );
+}
+
+.playlist-detail-cover {
+    width: 140px;
+    height: 140px;
+    flex-shrink: 0;
+
+    border-radius: 12px;
+    object-fit: cover;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.playlist-detail-header h1 {
+    margin-top: 6px;
+    font-size: 32px;
+}
+
+.playlist-detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    margin-top: 18px;
+}
+
+.playlist-detail-actions .primary-button {
+    margin-top: 0;
+
+    padding: 12px 24px;
+
+    border: 1px solid transparent;
+    border-radius: 999px;
+
+    font-size: 13px;
+    line-height: 1;
+}
+
+.playlist-detail-actions .text-button {
+    padding: 12px 22px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+
+    font-size: 13px;
+    line-height: 1;
+}
+
+.playlist-detail-actions .text-button:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
+#playlistDeleteButton {
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+#playlistDeleteButton:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
 }
 
 

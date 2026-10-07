@@ -5,7 +5,6 @@
 (function () {
 
     let myPlaylists = [];
-    let openPlaylistId = null; // which playlist's tracks are expanded in the panel
     let pickerTrack = null;    // the track currently being added via the picker
 
     // Same placeholder used in script.js — duplicated here so this file
@@ -52,6 +51,10 @@
 
     }
 
+    function coverArtworkFor(playlist) {
+        return playlist.tracks.find(t => t.artwork)?.artwork || PLACEHOLDER_ARTWORK;
+    }
+
 
     // ------------------------------------------------------------
     // LOAD PLAYLISTS FROM THE BACKEND
@@ -68,7 +71,6 @@
 
             const data = await window.AuroraAuth.apiRequest("/playlists");
             myPlaylists = data?.playlists || [];
-            console.log("Aurora: loaded playlists", myPlaylists);
 
         } catch (error) {
 
@@ -93,8 +95,6 @@
             body: JSON.stringify({ name })
         });
 
-        console.log("Aurora: created playlist", data.playlist);
-
         return data.playlist;
 
     }
@@ -105,8 +105,6 @@
     // ------------------------------------------------------------
 
     async function addTrackToPlaylist(playlistId, track) {
-
-        console.log("Aurora: adding track to playlist", { playlistId, track });
 
         const data = await window.AuroraAuth.apiRequest(
             `/playlists/${playlistId}/tracks`,
@@ -121,8 +119,6 @@
                 })
             }
         );
-
-        console.log("Aurora: add-track response", data);
 
         return data;
 
@@ -173,39 +169,25 @@
 
             <div class="playlist-card" data-playlist-id="${playlist.id}">
 
-                <div class="playlist-card-header" data-action="toggle">
-                    <div>
+                <div class="playlist-card-header" data-action="open">
+
+                    <img
+                        class="playlist-card-cover"
+                        src="${escapeHTML(coverArtworkFor(playlist))}"
+                        alt="${escapeHTML(playlist.name)}"
+                        onerror="this.onerror=null;this.src='${PLACEHOLDER_ARTWORK}';"
+                    >
+
+                    <div class="playlist-card-text">
                         <strong>${escapeHTML(playlist.name)}</strong>
                         <span>${playlist.tracks.length} track${playlist.tracks.length === 1 ? "" : "s"}</span>
                     </div>
-                    <button class="icon-button" data-action="delete" title="Delete playlist">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
+
                 </div>
 
-                ${openPlaylistId === playlist.id ? `
-                    <div class="playlist-card-tracks">
-                        ${
-                            playlist.tracks.length
-                                ? playlist.tracks.map(track => `
-                                    <div class="library-track" data-row-id="${track.rowId}">
-                                        <img src="${escapeHTML(track.artwork || PLACEHOLDER_ARTWORK)}" alt="${escapeHTML(track.title)}" onerror="this.onerror=null;this.src='${PLACEHOLDER_ARTWORK}';">
-                                        <div>
-                                            <strong>${escapeHTML(track.title)}</strong>
-                                            <span>${escapeHTML(track.artist)}</span>
-                                        </div>
-                                        <button class="library-play" data-action="play-track" title="Play">
-                                            <i class="fa-solid fa-play"></i>
-                                        </button>
-                                        <button class="icon-button" data-action="remove-track" title="Remove">
-                                            <i class="fa-solid fa-xmark"></i>
-                                        </button>
-                                    </div>
-                                `).join("")
-                                : `<p class="playlist-empty-hint">No tracks yet — use the "+" button on any song to add it here.</p>`
-                        }
-                    </div>
-                ` : ""}
+                <button class="icon-button" data-action="delete" title="Delete playlist">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
 
             </div>
 
@@ -215,7 +197,7 @@
 
 
     // ------------------------------------------------------------
-    // PANEL EVENTS (create / delete / expand / remove track / play)
+    // PANEL EVENTS (create / open / delete)
     // ------------------------------------------------------------
 
     function initPanelEvents() {
@@ -249,10 +231,12 @@
             const actionElement = event.target.closest("[data-action]");
             const action = actionElement?.dataset.action;
 
-            if (action === "toggle") {
+            if (action === "open") {
 
-                openPlaylistId = openPlaylistId === playlistId ? null : playlistId;
-                renderPanel();
+                if (typeof window.openPlaylistDetail === "function") {
+                    window.openPlaylistDetail(playlistId);
+                }
+
                 return;
 
             }
@@ -263,41 +247,12 @@
 
                 try {
                     await window.AuroraAuth.apiRequest(`/playlists/${playlistId}`, { method: "DELETE" });
-                    if (openPlaylistId === playlistId) openPlaylistId = null;
                     renderPanel();
                 } catch (error) {
                     notifyError(error.message);
                 }
 
                 return;
-
-            }
-
-            if (action === "remove-track") {
-
-                const rowId = event.target.closest("[data-row-id]")?.dataset.rowId;
-                if (!rowId) return;
-
-                try {
-                    await window.AuroraAuth.apiRequest(`/playlists/${playlistId}/tracks/${rowId}`, { method: "DELETE" });
-                    renderPanel();
-                } catch (error) {
-                    notifyError(error.message);
-                }
-
-                return;
-
-            }
-
-            if (action === "play-track") {
-
-                const rowId = event.target.closest("[data-row-id]")?.dataset.rowId;
-                const playlist = myPlaylists.find(p => p.id === playlistId);
-                const track = playlist?.tracks.find(t => t.rowId === rowId);
-
-                if (track && typeof playTrack === "function") {
-                    playTrack(track, playlist.tracks);
-                }
 
             }
 

@@ -2002,6 +2002,214 @@ async function loadArtist(artistId) {
 
 }
 
+
+// ============================================================
+// PLAYLIST DETAIL PAGE
+// ============================================================
+
+function openPlaylistDetail(playlistId) {
+    showSection("playlistDetailSection");
+    loadPlaylistDetail(playlistId);
+}
+
+async function loadPlaylistDetail(playlistId) {
+
+    const content = document.getElementById("playlistDetailContent");
+
+    if (!content) {
+        return;
+    }
+
+    if (!(window.AuroraAuth && window.AuroraAuth.isLoggedIn())) {
+        goToLibrary();
+        return;
+    }
+
+    content.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
+            <h3>Loading playlist…</h3>
+        </div>
+    `;
+
+    try {
+
+        const data = await window.AuroraAuth.apiRequest("/playlists");
+        const playlist = (data.playlists || []).find(p => p.id === playlistId);
+
+        if (!playlist) {
+
+            content.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <h3>Playlist not found</h3>
+                    <p>It may have been deleted.</p>
+                </div>
+            `;
+
+            return;
+
+        }
+
+        renderPlaylistDetail(playlist);
+
+    } catch (error) {
+
+        console.error("Load playlist detail error:", error);
+
+        content.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h3>Couldn't load this playlist</h3>
+                <p>${escapeHTML(error.message || "Please try again.")}</p>
+            </div>
+        `;
+
+    }
+
+}
+
+function renderPlaylistDetail(playlist) {
+
+    const content = document.getElementById("playlistDetailContent");
+
+    if (!content) {
+        return;
+    }
+
+    const tracks = playlist.tracks || [];
+
+    const coverArtwork =
+        tracks.find(t => t.artwork)?.artwork || PLACEHOLDER_ARTWORK;
+
+    content.innerHTML = `
+
+        <div class="playlist-detail-header">
+
+            <img
+                class="playlist-detail-cover"
+                src="${escapeHTML(coverArtwork)}"
+                alt="${escapeHTML(playlist.name)}"
+                onerror="this.onerror=null;this.src='${PLACEHOLDER_ARTWORK}';"
+            >
+
+            <div>
+                <p class="section-kicker">PLAYLIST</p>
+                <h1>${escapeHTML(playlist.name)}</h1>
+                <div class="artist-meta-row">
+                    ${tracks.length} track${tracks.length === 1 ? "" : "s"}
+                </div>
+
+                <div class="playlist-detail-actions">
+                    <button class="primary-button" id="playlistPlayAllButton">
+                        <i class="fa-solid fa-play"></i> Play All
+                    </button>
+                    <button class="text-button" id="playlistShuffleButton">
+                        <i class="fa-solid fa-shuffle"></i> Shuffle
+                    </button>
+                    <button class="text-button" id="playlistDeleteButton">
+                        <i class="fa-solid fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="track-list" id="playlistDetailTrackList">
+            ${
+                tracks.length
+                    ? tracks.map((track, index) => `
+                        <div class="library-track" data-row-id="${track.rowId}" data-track-index="${index}">
+                            <img
+                                src="${escapeHTML(track.artwork || PLACEHOLDER_ARTWORK)}"
+                                alt="${escapeHTML(track.title)}"
+                                onerror="this.onerror=null;this.src='${PLACEHOLDER_ARTWORK}';"
+                            >
+                            <div>
+                                <strong>${escapeHTML(track.title)}</strong>
+                                <span>${escapeHTML(track.artist)}</span>
+                            </div>
+                            <button class="library-play" data-action="play-track" title="Play">
+                                <i class="fa-solid fa-play"></i>
+                            </button>
+                            <button class="icon-button" data-action="remove-track" title="Remove">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    `).join("")
+                    : `<p class="playlist-empty-hint">No tracks yet — use the "+" button on any song to add it here.</p>`
+            }
+        </div>
+
+    `;
+
+    document.getElementById("playlistPlayAllButton")?.addEventListener("click", () => {
+        if (tracks.length) playTrack(tracks[0], tracks);
+    });
+
+    document.getElementById("playlistShuffleButton")?.addEventListener("click", () => {
+
+        if (!tracks.length) return;
+
+        const shuffled = [...tracks];
+
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        playTrack(shuffled[0], shuffled);
+
+    });
+
+    document.getElementById("playlistDeleteButton")?.addEventListener("click", async () => {
+
+        if (!confirm(`Delete "${playlist.name}"? This can't be undone.`)) return;
+
+        try {
+
+            await window.AuroraAuth.apiRequest(`/playlists/${playlist.id}`, { method: "DELETE" });
+            if (typeof showToast === "function") showToast("Playlist deleted");
+            goToLibrary();
+            openLibraryTab("playlists");
+
+        } catch (error) {
+            alert(error.message || "Could not delete this playlist.");
+        }
+
+    });
+
+    const trackListEl = document.getElementById("playlistDetailTrackList");
+
+    trackListEl?.addEventListener("click", async event => {
+
+        const rowId = event.target.closest("[data-row-id]")?.dataset.rowId;
+        const index = Number(event.target.closest("[data-track-index]")?.dataset.trackIndex);
+        const action = event.target.closest("[data-action]")?.dataset.action;
+
+        if (!rowId) return;
+
+        if (action === "remove-track") {
+
+            try {
+                await window.AuroraAuth.apiRequest(`/playlists/${playlist.id}/tracks/${rowId}`, { method: "DELETE" });
+                loadPlaylistDetail(playlist.id);
+            } catch (error) {
+                alert(error.message || "Could not remove this track.");
+            }
+
+            return;
+
+        }
+
+        if (action === "play-track" && !Number.isNaN(index)) {
+            playTrack(tracks[index], tracks);
+        }
+
+    });
+
+}
+
 async function loadProfile() {
 
     const profileContent = document.getElementById("profileContent");
@@ -2077,6 +2285,7 @@ async function loadProfile() {
             </div>
 
             <button class="text-button" id="profileLogoutButton">
+                <i class="fa-solid fa-right-from-bracket"></i>
                 Log Out
             </button>
 
