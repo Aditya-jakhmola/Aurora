@@ -10,6 +10,7 @@ function formatHistoryItem(item) {
         id: item.trackId,
         title: item.title,
         artist: item.artist,
+        artistId: item.artistId,
         artwork: item.artwork,
         duration: item.duration,
         streamUrl: `/api/stream/${encodeURIComponent(item.trackId)}`,
@@ -52,7 +53,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     try {
 
-        const { trackId, title, artist, artwork, duration } = req.body || {};
+        const { trackId, title, artist, artistId, artwork, duration } = req.body || {};
 
         if (!trackId) {
             return res.status(400).json({ success: false, error: "trackId is required." });
@@ -64,6 +65,7 @@ router.post("/", requireAuth, async (req, res) => {
                 trackId,
                 title: title || "Unknown Track",
                 artist: artist || "Unknown Artist",
+                artistId: artistId || null,
                 artwork: artwork || null,
                 duration: Number(duration) || 0
             }

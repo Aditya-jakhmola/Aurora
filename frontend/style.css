@@ -3148,3 +3148,107 @@ input:focus-visible {
     }
 
 }
+
+
+
+/* =========================================================
+   KEYBOARD SHORTCUTS + CLICKABLE PLAYLIST ARTISTS
+   ========================================================= */
+
+kbd {
+    display: inline-block;
+
+    min-width: 24px;
+
+    padding: 3px 7px;
+
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: var(--surface);
+
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.shortcuts-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    width: 100%;
+
+    padding: 9px 12px;
+    margin-bottom: 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: inherit;
+
+    cursor: pointer;
+
+    transition: var(--transition);
+}
+
+.shortcuts-hint:hover {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.shortcuts-hint kbd {
+    margin-left: auto;
+}
+
+.modal-box.kbd-modal {
+    width: 480px;
+}
+
+.kbd-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.kbd-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    padding: 11px 4px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.kbd-row:last-child {
+    border-bottom: none;
+}
+
+.kbd-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.kbd-keys {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.library-track .playlist-track-artist {
+    cursor: pointer;
+}
+
+.library-track .playlist-track-artist:hover {
+    color: var(--accent-light);
+    text-decoration: underline;
+}

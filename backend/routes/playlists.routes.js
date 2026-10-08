@@ -11,6 +11,7 @@ function formatTrackRow(row) {
         id: row.trackId,
         title: row.title,
         artist: row.artist,
+        artistId: row.artistId,
         artwork: row.artwork,
         duration: row.duration,
         streamUrl: `/api/stream/${encodeURIComponent(row.trackId)}`
@@ -132,7 +133,7 @@ router.post("/:playlistId/tracks", requireAuth, async (req, res) => {
     try {
 
         const { playlistId } = req.params;
-        const { trackId, title, artist, artwork, duration } = req.body || {};
+        const { trackId, title, artist, artistId, artwork, duration } = req.body || {};
 
         if (!trackId) {
             return res.status(400).json({ success: false, error: "trackId is required." });
@@ -154,6 +155,7 @@ router.post("/:playlistId/tracks", requireAuth, async (req, res) => {
                 trackId,
                 title: title || "Unknown Track",
                 artist: artist || "Unknown Artist",
+                artistId: artistId || null,
                 artwork: artwork || null,
                 duration: Number(duration) || 0,
                 position

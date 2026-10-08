@@ -118,6 +118,7 @@
                     trackId: String(track.id),
                     title: track.title,
                     artist: track.artist,
+                    artistId: track.artistId,
                     artwork: track.artwork,
                     duration: track.duration
                 })
@@ -480,6 +481,7 @@
                         id: String(track.id),
                         title: track.title,
                         artist: track.artist,
+                        artistId: track.artistId,
                         artwork: track.artwork
                     }
                 ];

@@ -10,6 +10,7 @@ function formatLike(like) {
         id: like.trackId,
         title: like.title,
         artist: like.artist,
+        artistId: like.artistId,
         artwork: like.artwork,
         duration: like.duration,
         streamUrl: `/api/stream/${encodeURIComponent(like.trackId)}`,
@@ -52,7 +53,7 @@ router.post("/:trackId", requireAuth, async (req, res) => {
     try {
 
         const { trackId } = req.params;
-        const { title, artist, artwork, duration } = req.body || {};
+        const { title, artist, artistId, artwork, duration } = req.body || {};
 
         const like = await prisma.like.upsert({
             where: {
@@ -64,6 +65,7 @@ router.post("/:trackId", requireAuth, async (req, res) => {
                 trackId,
                 title: title || "Unknown Track",
                 artist: artist || "Unknown Artist",
+                artistId: artistId || null,
                 artwork: artwork || null,
                 duration: Number(duration) || 0
             }

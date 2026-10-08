@@ -523,11 +523,7 @@ function attachGridEvents(
 
             if (action === "artist") {
 
-                const artistId = actionElement?.dataset.artistId;
-
-                if (artistId) {
-                    openArtist(artistId);
-                }
+                openArtistForTrack(track);
 
                 return;
             }
@@ -1507,6 +1503,7 @@ function toggleLike(
                       body: JSON.stringify({
                           title: track.title,
                           artist: track.artist,
+                          artistId: track.artistId,
                           artwork: track.artwork,
                           duration: track.duration
                       })
@@ -1584,9 +1581,7 @@ if (playerArtist) {
 
     playerArtist.addEventListener("click", () => {
 
-        if (currentTrack && currentTrack.artistId) {
-            openArtist(currentTrack.artistId);
-        }
+        openArtistForTrack(currentTrack);
 
     });
 
@@ -1635,6 +1630,7 @@ function saveRecentlyPlayed(
                 trackId: track.id,
                 title: track.title,
                 artist: track.artist,
+                artistId: track.artistId,
                 artwork: track.artwork,
                 duration: track.duration
             })
@@ -1922,6 +1918,43 @@ function openArtist(artistId) {
     loadArtist(artistId);
 }
 
+// Opens a track's artist page. Older saved songs (liked / played / in
+// playlists before artist IDs were stored) don't have an artistId, so we
+// look it up from the track itself the first time they're clicked.
+async function openArtistForTrack(track) {
+
+    if (!track) {
+        return;
+    }
+
+    let artistId = track.artistId;
+
+    if (!artistId && track.id) {
+
+        try {
+
+            const data = await apiRequest(`/tracks/${encodeURIComponent(track.id)}`);
+
+            artistId = data?.track?.artistId || null;
+
+            if (artistId) {
+                track.artistId = artistId;
+            }
+
+        } catch (error) {
+            console.error("Could not look up artist:", error);
+        }
+
+    }
+
+    if (artistId) {
+        openArtist(artistId);
+    } else {
+        showToast("Artist page isn't available for this track.");
+    }
+
+}
+
 async function loadArtist(artistId) {
 
     const artistContent = document.getElementById("artistContent");
@@ -2131,7 +2164,7 @@ function renderPlaylistDetail(playlist) {
                             >
                             <div>
                                 <strong>${escapeHTML(track.title)}</strong>
-                                <span>${escapeHTML(track.artist)}</span>
+                                <span class="playlist-track-artist" data-action="artist">${escapeHTML(track.artist)}</span>
                             </div>
                             <button class="library-play" data-action="play-track" title="Play">
                                 <i class="fa-solid fa-play"></i>
@@ -2208,6 +2241,11 @@ function renderPlaylistDetail(playlist) {
         const action = event.target.closest("[data-action]")?.dataset.action;
 
         if (!rowId) return;
+
+        if (action === "artist" && !Number.isNaN(index)) {
+            openArtistForTrack(tracks[index]);
+            return;
+        }
 
         if (action === "remove-track") {
 
