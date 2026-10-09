@@ -97,4 +97,25 @@ router.post("/", requireAuth, async (req, res) => {
 
 });
 
+// ============================================================
+// CLEAR ALL LISTENING HISTORY
+// ============================================================
+
+router.delete("/", requireAuth, async (req, res) => {
+
+    try {
+
+        await prisma.historyItem.deleteMany({ where: { userId: req.userId } });
+
+        res.json({ success: true });
+
+    } catch (error) {
+
+        console.error("Clear history error:", error.message);
+        res.status(500).json({ success: false, error: "Unable to clear listening history." });
+
+    }
+
+});
+
 module.exports = router;

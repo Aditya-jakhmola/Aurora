@@ -2342,6 +2342,11 @@ async function loadProfile() {
 
             </div>
 
+            <button class="text-button" id="profileSettingsButton">
+                <i class="fa-solid fa-gear"></i>
+                Settings
+            </button>
+
             <button class="text-button" id="profileLogoutButton">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 Log Out

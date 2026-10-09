@@ -3252,3 +3252,127 @@ kbd {
     color: var(--accent-light);
     text-decoration: underline;
 }
+
+
+
+/* =========================================================
+   SETTINGS PAGE
+   ========================================================= */
+
+#profileSettingsButton {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+
+    width: 100%;
+
+    margin-top: 8px;
+    margin-bottom: 2px;
+
+    padding: 13px 24px;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+#profileSettingsButton:hover {
+    background: var(--surface-hover);
+}
+
+.settings-page {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.settings-page .library-header {
+    margin-bottom: 24px;
+}
+
+.settings-card {
+    padding: 24px;
+    margin-bottom: 18px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.settings-card-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    margin-bottom: 18px;
+}
+
+.settings-card-head h3 {
+    font-size: 16px;
+}
+
+.settings-card-head p {
+    margin-top: 3px;
+
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.settings-icon {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 12px;
+
+    background: rgba(168, 85, 247, 0.15);
+
+    color: var(--accent-light);
+    font-size: 16px;
+}
+
+.settings-icon.is-danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+}
+
+.settings-card .pl-form .pl-btn {
+    align-self: flex-start;
+    margin-top: 18px;
+}
+
+.settings-success {
+    margin-top: 12px;
+    padding: 10px 12px;
+
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 10px;
+    background: rgba(74, 222, 128, 0.08);
+
+    color: #4ade80;
+    font-size: 12px;
+}
+
+.settings-success[hidden] {
+    display: none;
+}
+
+.settings-danger {
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.settings-delete-form {
+    margin-top: 18px;
+    text-align: left;
+}
+
+.settings-delete-form .pl-modal-actions {
+    justify-content: center;
+}
