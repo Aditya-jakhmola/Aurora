@@ -3376,3 +3376,136 @@ kbd {
 .settings-delete-form .pl-modal-actions {
     justify-content: center;
 }
+
+
+
+/* =========================================================
+   LIBRARY TOOLS (Play all / Shuffle bar, recent searches)
+   ========================================================= */
+
+.library-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    margin: 4px 0 22px;
+}
+
+.library-toolbar[hidden] {
+    display: none;
+}
+
+.library-toolbar .pl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.library-count {
+    margin-left: auto;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.recent-searches {
+    margin: 4px 0 14px;
+}
+
+.recent-searches[hidden] {
+    display: none;
+}
+
+.recent-searches-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-bottom: 10px;
+
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.recent-clear {
+    border: none;
+    background: transparent;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: inherit;
+
+    cursor: pointer;
+}
+
+.recent-clear:hover {
+    color: var(--accent-light);
+}
+
+.recent-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.recent-chip {
+    display: inline-flex;
+    align-items: center;
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+
+    transition: var(--transition);
+}
+
+.recent-chip:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+}
+
+.recent-chip-text {
+    max-width: 220px;
+
+    padding: 7px 6px 7px 14px;
+
+    border: none;
+    background: transparent;
+
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    cursor: pointer;
+}
+
+.recent-chip-remove {
+    width: 26px;
+    height: 26px;
+
+    margin-right: 4px;
+
+    display: grid;
+    place-items: center;
+
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.recent-chip-remove:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
