@@ -8,8 +8,15 @@ const { requireAuth, JWT_SECRET } = require("../middleware/auth");
 const router = express.Router();
 
 function signToken(userId) {
-    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d" });
+    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d", algorithm: "HS256" });
 }
+
+// Used so that logging in with an unknown username takes about as long as a
+// wrong password does — otherwise response time would reveal which accounts exist.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("aurora-not-a-real-password", 10);
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/;
 
 function publicUser(user) {
     return {
@@ -38,15 +45,47 @@ router.post("/register", async (req, res) => {
             });
         }
 
-        if (String(password).length < 6) {
+        if (
+            typeof email !== "string" ||
+            typeof username !== "string" ||
+            typeof password !== "string"
+        ) {
+            return res.status(400).json({
+                success: false,
+                error: "Please check the details you entered and try again."
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedUsername = username.trim();
+
+        if (normalizedEmail.length > 254 || !EMAIL_PATTERN.test(normalizedEmail)) {
+            return res.status(400).json({
+                success: false,
+                error: "Please enter a valid email address."
+            });
+        }
+
+        if (!USERNAME_PATTERN.test(normalizedUsername)) {
+            return res.status(400).json({
+                success: false,
+                error: "Username must be 3–30 characters: letters, numbers, dots, dashes or underscores."
+            });
+        }
+
+        if (password.length < 6) {
             return res.status(400).json({
                 success: false,
                 error: "Password must be at least 6 characters."
             });
         }
 
-        const normalizedEmail = String(email).trim().toLowerCase();
-        const normalizedUsername = String(username).trim();
+        if (password.length > 72) {
+            return res.status(400).json({
+                success: false,
+                error: "Password must be 72 characters or fewer."
+            });
+        }
 
         const existing = await prisma.user.findFirst({
             where: {
@@ -107,6 +146,10 @@ router.post("/login", async (req, res) => {
 
         const identifier = String(emailOrUsername).trim();
 
+        if (identifier.length > 254) {
+            return res.status(401).json({ success: false, error: "Invalid credentials." });
+        }
+
         const user = await prisma.user.findFirst({
             where: {
                 OR: [
@@ -116,13 +159,13 @@ router.post("/login", async (req, res) => {
             }
         });
 
-        if (!user) {
-            return res.status(401).json({ success: false, error: "Invalid credentials." });
-        }
+        // Always run a password comparison, even for unknown users (see note above).
+        const valid = await bcrypt.compare(
+            String(password),
+            user ? user.password : DUMMY_PASSWORD_HASH
+        );
 
-        const valid = await bcrypt.compare(String(password), user.password);
-
-        if (!valid) {
+        if (!user || !valid) {
             return res.status(401).json({ success: false, error: "Invalid credentials." });
         }
 
