@@ -1,0 +1,29 @@
+# Render Blueprint — tells Render how to run Aurora.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: aurora
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.12.0
+      # Render sits behind several proxies. 3 gives the real visitor address
+      # (verify after deploying — see README).
+      - key: TRUST_PROXY
+        value: "3"
+      - key: AUDIUS_API_URL
+        value: https://api.audius.co/v1
+      # Render generates a strong random secret for you.
+      - key: JWT_SECRET
+        generateValue: true
+      # Paste your Neon connection string when Render asks.
+      - key: DATABASE_URL
+        sync: false

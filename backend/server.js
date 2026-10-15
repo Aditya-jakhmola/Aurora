@@ -55,6 +55,27 @@ app.delete("/api/auth/account", security.sensitiveLimiter);
 
 
 // ============================================================
+// OPTIONAL: check what address the server sees for you.
+// Off unless DEBUG_IP=true. Used once after deploying to confirm
+// TRUST_PROXY is right (see README), then switched off again.
+// ============================================================
+
+if (process.env.DEBUG_IP === "true") {
+
+    app.get("/api/debug/ip", (req, res) => {
+
+        res.json({
+            ip: req.ip,
+            forwardedFor: req.headers["x-forwarded-for"] || null,
+            trustProxy: app.get("trust proxy")
+        });
+
+    });
+
+}
+
+
+// ============================================================
 // ROUTES
 // ============================================================
 

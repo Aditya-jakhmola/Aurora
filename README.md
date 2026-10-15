@@ -91,6 +91,26 @@ in `backend`, then `npm start`. (`start.bat` runs the last step for you.)
 
 **Never commit `.env`.** It is already listed in `.gitignore`; `.env.example` is the safe template.
 
+## Deploy (Render + Neon, free)
+
+Aurora runs on [Render](https://render.com) (the app) with a [Neon](https://neon.com) Postgres database.
+Render's own free database is deleted after 30 days, so Neon is used for the data.
+
+1. **Neon:** create a project (region: Singapore). In *Connect*, turn **off** connection pooling,
+   copy the connection string (the host must **not** contain `-pooler`), and make sure it ends with
+   `?sslmode=require` (delete `&channel_binding=require` if present).
+2. **Render:** *New + → Blueprint*, pick this repository. Render reads `render.yaml`, asks for
+   `DATABASE_URL` (paste the Neon string) and deploys. The build runs `npm run build`, which creates
+   the database tables for you. Every `git push` redeploys automatically.
+3. **Check visitor addresses** (once): in Render → *Environment* add `DEBUG_IP=true`, open
+   `https://YOUR-APP.onrender.com/api/debug/ip` and compare `ip` with what <https://api.ipify.org>
+   shows in your browser. If they differ, change `TRUST_PROXY` until they match. Then delete `DEBUG_IP`.
+4. Put your real site address in the `og:image` / `twitter:image` tags in `frontend/index.html`
+   (link previews need a full `https://...` URL).
+
+Free-tier notes: the app sleeps after ~15 minutes without visitors, so the first visit after a quiet
+period takes about a minute to wake up. The database wakes in under a second.
+
 ## Security notes
 
 - Passwords are hashed with bcrypt; sessions use signed tokens that expire after 30 days
