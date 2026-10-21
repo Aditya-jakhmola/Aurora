@@ -152,10 +152,10 @@ router.post("/:playlistId/tracks", requireAuth, async (req, res) => {
         const track = await prisma.playlistTrack.create({
             data: {
                 playlistId,
-                trackId,
+                trackId: String(trackId),
                 title: title || "Unknown Track",
                 artist: artist || "Unknown Artist",
-                artistId: artistId || null,
+                artistId: artistId ? String(artistId) : null,
                 artwork: artwork || null,
                 duration: Number(duration) || 0,
                 position

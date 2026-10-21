@@ -62,10 +62,10 @@ router.post("/", requireAuth, async (req, res) => {
         await prisma.historyItem.create({
             data: {
                 userId: req.userId,
-                trackId,
+                trackId: String(trackId),
                 title: title || "Unknown Track",
                 artist: artist || "Unknown Artist",
-                artistId: artistId || null,
+                artistId: artistId ? String(artistId) : null,
                 artwork: artwork || null,
                 duration: Number(duration) || 0
             }
